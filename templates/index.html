@@ -20,6 +20,12 @@
                 <label for="water_every">Water every (days)</label>
                 <input type="number" id="water_every" name="water_every" min="1" step="1" required>
 
+                <label for="fertilize_every">Fertilize every (days, optional)</label>
+                <input type="number" id="fertilize_every" name="fertilize_every" min="1" step="1">
+
+                <label for="repot_every">Repot every (days, optional)</label>
+                <input type="number" id="repot_every" name="repot_every" min="1" step="1">
+
                 <button type="submit">Add plant</button>
             </form>
         </section>
@@ -31,7 +37,11 @@
                 {% for plant in plants %}
                 <li>
                     <span class="plant-name">{{ plant["name"] }}</span>
-                    <span class="plant-status">{{ plant_status(plant) }}</span>
+                    <span class="plant-statuses">
+                        {% for label, status in plant_statuses(plant) %}
+                        <span class="plant-status"><strong>{{ label }}:</strong> {{ status }}</span>
+                        {% endfor %}
+                    </span>
                     <form class="water-form" action="{{ url_for('mark_watered', plant_id=plant['id']) }}" method="post">
                         <button type="submit">Watered</button>
                     </form>

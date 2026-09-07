@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from app import days_until_due, plant_status
+from app import care_type_status, days_until_due, plant_status
 
 
 def test_home_page_loads(client):
@@ -88,7 +88,7 @@ def test_days_until_due_negative_is_overdue():
         "water_every": 7,
         "last_watered": (date.today() - timedelta(days=10)).isoformat(),
     }
-    assert days_until_due(plant) < 0
+    assert days_until_due(plant, "water_every", "last_watered") < 0
 
 
 def test_days_until_due_zero_is_due_today():
@@ -98,7 +98,7 @@ def test_days_until_due_zero_is_due_today():
         "water_every": 7,
         "last_watered": (date.today() - timedelta(days=7)).isoformat(),
     }
-    assert days_until_due(plant) == 0
+    assert days_until_due(plant, "water_every", "last_watered") == 0
 
 
 def test_days_until_due_positive_is_future():
@@ -108,7 +108,7 @@ def test_days_until_due_positive_is_future():
         "water_every": 7,
         "last_watered": (date.today() - timedelta(days=2)).isoformat(),
     }
-    assert days_until_due(plant) > 0
+    assert days_until_due(plant, "water_every", "last_watered") > 0
 
 
 def test_plant_status_with_malformed_date_is_never_watered():
@@ -147,3 +147,193 @@ def test_page_shows_updated_status_after_marking(client, db):
     response = client.get("/")
     assert b"due in 7 days" in response.data
     assert b"never watered" not in response.data
+
+
+def test_schema_contains_new_columns(app, db):
+    columns = [row["name"] for row in db.execute("PRAGMA table_info(plants)")]
+    for column in ("fertilize_every", "last_fertilized", "repot_every", "last_repotted"):
+        assert column in columns
+
+
+def test_ensure_schema_migrates_old_database(tmp_path):
+    import sqlite3
+
+    import app as app_module
+
+    old_db_path = tmp_path / "old.db"
+    conn = sqlite3.connect(old_db_path)
+    conn.execute(
+        "CREATE TABLE plants (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "name TEXT NOT NULL, water_every INTEGER NOT NULL, last_watered TEXT)"
+    )
+    conn.execute("INSERT INTO plants (name, water_every) VALUES ('Old Plant', 7)")
+    conn.commit()
+    conn.close()
+
+    conn = sqlite3.connect(old_db_path)
+    conn.row_factory = sqlite3.Row
+    app_module.ensure_schema(conn)
+    conn.close()
+
+    conn = sqlite3.connect(old_db_path)
+    columns = [row[1] for row in conn.execute("PRAGMA table_info(plants)")]
+    for column in ("fertilize_every", "last_fertilized", "repot_every", "last_repotted"):
+        assert column in columns
+    count = conn.execute("SELECT COUNT(*) FROM plants").fetchone()[0]
+    conn.close()
+    assert count == 1
+
+
+def test_plant_with_all_three_schedules_stores_correctly(client, db):
+    client.post(
+        "/add",
+        data={
+            "name": "Monstera",
+            "water_every": "7",
+            "fertilize_every": "14",
+            "repot_every": "30",
+        },
+    )
+
+    row = db.execute(
+        "SELECT water_every, fertilize_every, repot_every FROM plants WHERE name = ?",
+        ("Monstera",),
+    ).fetchone()
+
+    assert row is not None
+    assert row["water_every"] == 7
+    assert row["fertilize_every"] == 14
+    assert row["repot_every"] == 30
+
+
+def test_plant_with_only_watering_stores_null_for_others(client, db):
+    client.post("/add", data={"name": "Cactus", "water_every": "14"})
+
+    row = db.execute(
+        "SELECT fertilize_every, last_fertilized, repot_every, last_repotted "
+        "FROM plants WHERE name = ?",
+        ("Cactus",),
+    ).fetchone()
+
+    assert row["fertilize_every"] is None
+    assert row["last_fertilized"] is None
+    assert row["repot_every"] is None
+    assert row["last_repotted"] is None
+
+
+def test_invalid_fertilize_interval_is_rejected(client, db):
+    response = client.post(
+        "/add", data={"name": "Fern", "water_every": "5", "fertilize_every": "0"}
+    )
+
+    assert response.status_code == 400
+    row = db.execute("SELECT COUNT(*) AS n FROM plants").fetchone()
+    assert row["n"] == 0
+
+
+def test_non_numeric_repot_interval_is_rejected(client, db):
+    response = client.post(
+        "/add", data={"name": "Fern", "water_every": "5", "repot_every": "abc"}
+    )
+
+    assert response.status_code == 400
+    row = db.execute("SELECT COUNT(*) AS n FROM plants").fetchone()
+    assert row["n"] == 0
+
+
+def test_care_type_status_never_done():
+    plant = {
+        "id": 1,
+        "name": "Rose",
+        "water_every": 7,
+        "last_watered": None,
+        "fertilize_every": 14,
+        "last_fertilized": None,
+        "repot_every": None,
+        "last_repotted": None,
+    }
+    assert care_type_status(plant, "fertilize_every", "last_fertilized", "never done") == "never done"
+
+
+def test_care_type_status_overdue():
+    plant = {
+        "id": 1,
+        "name": "Rose",
+        "water_every": 7,
+        "last_watered": None,
+        "fertilize_every": 14,
+        "last_fertilized": (date.today() - timedelta(days=20)).isoformat(),
+        "repot_every": None,
+        "last_repotted": None,
+    }
+    assert care_type_status(plant, "fertilize_every", "last_fertilized", "never done") == "overdue"
+
+
+def test_care_type_status_due_today():
+    plant = {
+        "id": 1,
+        "name": "Rose",
+        "water_every": 7,
+        "last_watered": None,
+        "fertilize_every": 14,
+        "last_fertilized": (date.today() - timedelta(days=14)).isoformat(),
+        "repot_every": None,
+        "last_repotted": None,
+    }
+    assert care_type_status(plant, "fertilize_every", "last_fertilized", "never done") == "due today"
+
+
+def test_care_type_status_due_in_x_days():
+    plant = {
+        "id": 1,
+        "name": "Rose",
+        "water_every": 7,
+        "last_watered": None,
+        "fertilize_every": 14,
+        "last_fertilized": (date.today() - timedelta(days=4)).isoformat(),
+        "repot_every": None,
+        "last_repotted": None,
+    }
+    assert care_type_status(plant, "fertilize_every", "last_fertilized", "never done") == "due in 10 days"
+
+
+def test_care_type_status_hidden_when_no_interval():
+    plant = {
+        "id": 1,
+        "name": "Rose",
+        "water_every": 7,
+        "last_watered": None,
+        "fertilize_every": None,
+        "last_fertilized": None,
+        "repot_every": 30,
+        "last_repotted": None,
+    }
+    assert care_type_status(plant, "fertilize_every", "last_fertilized", "never done") is None
+
+
+def test_page_shows_fertilize_and_repot_statuses(client):
+    client.post(
+        "/add",
+        data={
+            "name": "Monstera",
+            "water_every": "7",
+            "fertilize_every": "14",
+            "repot_every": "30",
+        },
+    )
+
+    response = client.get("/")
+
+    assert b"Fertilize:" in response.data
+    assert b"never done" in response.data
+    assert b"Repot:" in response.data
+
+
+def test_plant_with_only_watering_shows_no_fertilize_status(client):
+    client.post("/add", data={"name": "Cactus", "water_every": "14"})
+
+    response = client.get("/")
+
+    assert b"never watered" in response.data
+    assert b"Fertilize:" not in response.data
+    assert b"Repot:" not in response.data

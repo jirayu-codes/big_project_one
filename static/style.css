@@ -71,16 +71,27 @@ button:hover {
     background: white;
     border-radius: 6px;
     border-left: 4px solid #a3c585;
+    flex-wrap: wrap;
 }
 
 .plant-name {
     font-weight: 600;
 }
 
+.plant-statuses {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin-left: auto;
+}
+
 .plant-status {
     color: #7a756f;
     font-size: 0.9rem;
-    margin-left: auto;
+}
+
+.plant-status strong {
+    color: #5a564f;
 }
 
 .water-form {

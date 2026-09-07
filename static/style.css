@@ -65,6 +65,7 @@ button:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.75rem;
     padding: 0.75rem;
     margin-bottom: 0.5rem;
     background: white;
@@ -79,6 +80,17 @@ button:hover {
 .plant-status {
     color: #7a756f;
     font-size: 0.9rem;
+    margin-left: auto;
+}
+
+.water-form {
+    display: inline;
+    margin: 0;
+}
+
+.water-form button {
+    margin: 0;
+    padding: 0.35rem 0.75rem;
 }
 
 .empty {

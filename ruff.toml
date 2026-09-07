@@ -1,0 +1,6 @@
+# Project lint settings.
+# DTZ rules are ignored because the feature spec explicitly avoids timezone
+# handling (SPECS/2026-09-07-mark-watered/requirements.md: "Today comes from
+# the server's current date (via Python's date, no timezone handling)").
+[lint]
+ignore = ["DTZ"]

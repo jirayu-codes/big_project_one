@@ -1,11 +1,25 @@
 import logging
 import os
 import sqlite3
+from datetime import date, timedelta
 
-from flask import Flask, g, redirect, render_template, request, url_for
+from flask import Flask, abort, g, redirect, render_template, request, url_for
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("plantpal")
+
+
+def mark_plant_watered(db, plant_id):
+    """Set the plant's last_watered to today's date. Return the plant or None."""
+    plant = get_plant(db, plant_id)
+    if plant is None:
+        return None
+    db.execute(
+        "UPDATE plants SET last_watered = ? WHERE id = ?",
+        (date.today().isoformat(), plant_id),
+    )
+    db.commit()
+    return get_plant(db, plant_id)
 
 
 def get_plant(db, plant_id):
@@ -40,16 +54,32 @@ def add_new_plant(db, form):
     return get_plant(db, cursor.lastrowid)
 
 
-def plant_status(plant):
-    """Return the watering status text shown for a plant.
+def days_until_due(plant):
+    """Return the number of days until the plant is due, given it has been watered.
 
-    In this feature no plant has been watered yet, so every plant shows
-    "never watered". Later features will make the "overdue", "due today",
-    and "due in X days" statuses appear once plants can be marked watered.
+    A negative result means the plant is overdue; 0 means it is due today.
+    Returns None if the stored date is not in YYYY-MM-DD format.
     """
+    try:
+        last_watered = date.fromisoformat(plant["last_watered"])
+    except ValueError:
+        return None
+    due_date = last_watered + timedelta(days=plant["water_every"])
+    return (due_date - date.today()).days
+
+
+def plant_status(plant):
+    """Return the watering status text shown for a plant."""
     if not plant["last_watered"]:
         return "never watered"
-    return "due today"
+    days = days_until_due(plant)
+    if days is None:
+        return "never watered"
+    if days < 0:
+        return "overdue"
+    if days == 0:
+        return "due today"
+    return f"due in {days} days"
 
 
 def create_app(test_config=None):
@@ -103,6 +133,15 @@ def create_app(test_config=None):
         logger.info(
             "Added plant %r (water every %s days)", plant["name"], plant["water_every"]
         )
+        return redirect(url_for("index"))
+
+    @app.route("/watered/<int:plant_id>", methods=["POST"])
+    def mark_watered(plant_id):
+        plant = mark_plant_watered(get_db(), plant_id)
+        if plant is None:
+            logger.warning("Tried to water a plant that does not exist (id=%s)", plant_id)
+            abort(404)
+        logger.info("Marked plant %r (id=%s) as watered", plant["name"], plant_id)
         return redirect(url_for("index"))
 
     return app

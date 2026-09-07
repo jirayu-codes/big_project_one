@@ -32,6 +32,9 @@
                 <li>
                     <span class="plant-name">{{ plant["name"] }}</span>
                     <span class="plant-status">{{ plant_status(plant) }}</span>
+                    <form class="water-form" action="{{ url_for('mark_watered', plant_id=plant['id']) }}" method="post">
+                        <button type="submit">Watered</button>
+                    </form>
                 </li>
                 {% endfor %}
             </ul>

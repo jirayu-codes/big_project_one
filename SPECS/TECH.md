@@ -14,10 +14,14 @@ reads it when producing canonical requirements.
 
 ```
 Table: plants
-- id:            INTEGER PRIMARY KEY AUTOINCREMENT
-- name:          TEXT     # the name of the plant
-- water_every:   INTEGER  # how many days between watering
-- last_watered:  TEXT     # the date last watered; may be empty/never if not watered yet
+- id:                INTEGER PRIMARY KEY AUTOINCREMENT
+- name:              TEXT     # the name of the plant
+- water_every:       INTEGER  # how many days between watering (required)
+- last_watered:      TEXT     # date last watered; may be empty/never if not watered yet
+- fertilize_every:   INTEGER  # how many days between fertilizing; may be empty if not tracked
+- last_fertilized:   TEXT     # date last fertilized; may be empty/never if not fertilized yet
+- repot_every:       INTEGER  # how many days between repotting; may be empty if not tracked
+- last_repotted:     TEXT     # date last repotted; may be empty/never if not repotted yet
 ```
 
 ## Engineering Standards

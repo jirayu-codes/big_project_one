@@ -11,6 +11,9 @@ logger = logging.getLogger("plantpal")
 
 def mark_plant_watered(db, plant_id):
     """Set the plant's last_watered to today's date. Return the plant or None."""
+    plant = get_plant(db, plant_id)
+    if plant is None:
+        return None
     db.execute(
         "UPDATE plants SET last_watered = ? WHERE id = ?",
         (date.today().isoformat(), plant_id),
@@ -55,8 +58,12 @@ def days_until_due(plant):
     """Return the number of days until the plant is due, given it has been watered.
 
     A negative result means the plant is overdue; 0 means it is due today.
+    Returns None if the stored date is not in YYYY-MM-DD format.
     """
-    last_watered = date.fromisoformat(plant["last_watered"])
+    try:
+        last_watered = date.fromisoformat(plant["last_watered"])
+    except ValueError:
+        return None
     due_date = last_watered + timedelta(days=plant["water_every"])
     return (due_date - date.today()).days
 
@@ -66,6 +73,8 @@ def plant_status(plant):
     if not plant["last_watered"]:
         return "never watered"
     days = days_until_due(plant)
+    if days is None:
+        return "never watered"
     if days < 0:
         return "overdue"
     if days == 0:

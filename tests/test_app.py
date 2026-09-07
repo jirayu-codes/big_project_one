@@ -3,10 +3,6 @@ from datetime import date, timedelta
 from app import days_until_due, plant_status
 
 
-def _add(client, name, water_every):
-    return client.post("/add", data={"name": name, "water_every": str(water_every)})
-
-
 def test_home_page_loads(client):
     response = client.get("/")
     assert response.status_code == 200
@@ -113,6 +109,16 @@ def test_days_until_due_positive_is_future():
         "last_watered": (date.today() - timedelta(days=2)).isoformat(),
     }
     assert days_until_due(plant) > 0
+
+
+def test_plant_status_with_malformed_date_is_never_watered():
+    plant = {
+        "id": 1,
+        "name": "Monstera",
+        "water_every": 7,
+        "last_watered": "not-a-date",
+    }
+    assert plant_status(plant) == "never watered"
 
 
 def test_mark_watered_updates_last_watered(client, db):

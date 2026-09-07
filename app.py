@@ -9,6 +9,26 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("plantpal")
 
 
+def _add_column(db, table, column, definition):
+    """Add a single column to a table if it is not already present."""
+    columns = [row["name"] for row in db.execute(f"PRAGMA table_info({table})")]
+    if column not in columns:
+        db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
+def ensure_schema(db):
+    """Make sure the plants table has all the columns this app needs.
+
+    With an old database the table may predate the fertilize/repot columns,
+    so we add any missing ones. This is safe to run every time.
+    """
+    _add_column(db, "plants", "fertilize_every", "INTEGER")
+    _add_column(db, "plants", "last_fertilized", "TEXT")
+    _add_column(db, "plants", "repot_every", "INTEGER")
+    _add_column(db, "plants", "last_repotted", "TEXT")
+    db.commit()
+
+
 def mark_plant_watered(db, plant_id):
     """Set the plant's last_watered to today's date. Return the plant or None."""
     plant = get_plant(db, plant_id)
@@ -22,10 +42,16 @@ def mark_plant_watered(db, plant_id):
     return get_plant(db, plant_id)
 
 
+PLANT_COLUMNS = (
+    "id, name, water_every, last_watered, "
+    "fertilize_every, last_fertilized, repot_every, last_repotted"
+)
+
+
 def get_plant(db, plant_id):
     """Return the plant with the given id, or None if it does not exist."""
     return db.execute(
-        "SELECT id, name, water_every, last_watered FROM plants WHERE id = ?",
+        f"SELECT {PLANT_COLUMNS} FROM plants WHERE id = ?",
         (plant_id,),
     ).fetchone()
 
@@ -33,8 +59,19 @@ def get_plant(db, plant_id):
 def get_all_plants(db):
     """Return every plant in the database, oldest first."""
     return db.execute(
-        "SELECT id, name, water_every, last_watered FROM plants ORDER BY id"
+        f"SELECT {PLANT_COLUMNS} FROM plants ORDER BY id"
     ).fetchall()
+
+
+def _interval_value(form, key):
+    """Return the validated interval for a form key, or None if left blank."""
+    raw = form.get(key, "").strip()
+    if raw == "":
+        return None
+    value = int(raw)
+    if value < 1:
+        raise ValueError(f"{key} must be at least 1")
+    return value
 
 
 def add_new_plant(db, form):
@@ -46,40 +83,59 @@ def add_new_plant(db, form):
         raise ValueError("water_every must be a whole number") from None
     if not name or water_every < 1:
         raise ValueError("name must not be empty and water_every must be at least 1")
+
+    try:
+        fertilize_every = _interval_value(form, "fertilize_every")
+        repot_every = _interval_value(form, "repot_every")
+    except ValueError:
+        raise ValueError("fertilize_every and repot_every must be blank or at least 1") from None
+
     cursor = db.execute(
-        "INSERT INTO plants (name, water_every, last_watered) VALUES (?, ?, NULL)",
-        (name, water_every),
+        "INSERT INTO plants (name, water_every, last_watered, "
+        "fertilize_every, last_fertilized, repot_every, last_repotted) "
+        "VALUES (?, ?, NULL, ?, NULL, ?, NULL)",
+        (name, water_every, fertilize_every, repot_every),
     )
     db.commit()
     return get_plant(db, cursor.lastrowid)
 
 
-def days_until_due(plant):
-    """Return the number of days until the plant is due, given it has been watered.
+def days_until_due(plant, every_col, last_col):
+    """Return the days until a care type is due, given its last-done date.
 
-    A negative result means the plant is overdue; 0 means it is due today.
-    Returns None if the stored date is not in YYYY-MM-DD format.
+    `every_col` is the name of the interval column (e.g. "water_every") and
+    `last_col` the last-done column (e.g. "last_watered"). A negative result
+    means overdue; 0 means due today. Returns None if the stored date is not
+    in YYYY-MM-DD format.
     """
+    last_done = plant[last_col]
     try:
-        last_watered = date.fromisoformat(plant["last_watered"])
-    except ValueError:
+        last_done_date = date.fromisoformat(last_done)
+    except (TypeError, ValueError):
         return None
-    due_date = last_watered + timedelta(days=plant["water_every"])
+    due_date = last_done_date + timedelta(days=plant[every_col])
     return (due_date - date.today()).days
 
 
-def plant_status(plant):
-    """Return the watering status text shown for a plant."""
-    if not plant["last_watered"]:
-        return "never watered"
-    days = days_until_due(plant)
+def care_type_status(plant, every_col, last_col, never_word):
+    """Return the status text for one care type, e.g. "due in 3 days"."""
+    if not plant[every_col]:
+        return None
+    if not plant[last_col]:
+        return never_word
+    days = days_until_due(plant, every_col, last_col)
     if days is None:
-        return "never watered"
+        return never_word
     if days < 0:
         return "overdue"
     if days == 0:
         return "due today"
     return f"due in {days} days"
+
+
+def plant_status(plant):
+    """Return the watering status text shown for a plant."""
+    return care_type_status(plant, "water_every", "last_watered", "never watered")
 
 
 def create_app(test_config=None):
@@ -107,7 +163,7 @@ def create_app(test_config=None):
     def init_db():
         with app.open_resource("schema.sql") as f:
             get_db().executescript(f.read().decode("utf-8"))
-        get_db().commit()
+        ensure_schema(get_db())
 
     with app.app_context():
         init_db()
@@ -115,7 +171,21 @@ def create_app(test_config=None):
 
     @app.context_processor
     def inject_helpers():
-        return {"plant_status": plant_status}
+        def plant_statuses(plant):
+            """Return a list of (label, status) tuples for each tracked care type."""
+            care_types = (
+                ("Water", "water_every", "last_watered", "never watered"),
+                ("Fertilize", "fertilize_every", "last_fertilized", "never done"),
+                ("Repot", "repot_every", "last_repotted", "never done"),
+            )
+            rows = []
+            for label, every_col, last_col, never_word in care_types:
+                status = care_type_status(plant, every_col, last_col, never_word)
+                if status is not None:
+                    rows.append((label, status))
+            return rows
+
+        return {"plant_statuses": plant_statuses}
 
     @app.route("/")
     def index():

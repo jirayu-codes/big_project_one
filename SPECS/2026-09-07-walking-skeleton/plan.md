@@ -1,12 +1,14 @@
 # Walking Skeleton — Plan
 
-Numbered task groups. Red/Green style: write failing tests first, then the
-minimal code to make them pass.
+Numbered task groups. This is spec-driven development: every task traces back
+to the approved spec (`requirements.md`). Each task group is implemented to
+match the requirements, and validated before moving on.
 
 ## Run checks
 
-- Run tests and linting after each task group. There is a minimal JavaScript
-  touch, so ensure the JS stays small and simple.
+- Run tests and linting after each task group to confirm the code matches the
+  requirements. There is a minimal JavaScript touch, so ensure the JS stays
+  small and simple.
 
 ## Task group 1 — Project setup
 

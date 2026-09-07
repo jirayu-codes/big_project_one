@@ -11,7 +11,7 @@ How we know this feature is done and can be merged.
 
 ## Test checks
 
-- All automated tests pass (Red/Green: tests written first, then code to pass).
+- Automated tests pass, confirming the implementation matches the requirements.
 - There is a test for: adding a plant stores it.
 - There is a test for: a saved plant appears on the page.
 - There is a test for: a plant with no last watered date shows "never watered".

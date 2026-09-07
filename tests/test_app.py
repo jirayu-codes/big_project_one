@@ -155,6 +155,35 @@ def test_schema_contains_new_columns(app, db):
         assert column in columns
 
 
+def test_ensure_schema_migrates_old_database(tmp_path):
+    import sqlite3
+
+    import app as app_module
+
+    old_db_path = tmp_path / "old.db"
+    conn = sqlite3.connect(old_db_path)
+    conn.execute(
+        "CREATE TABLE plants (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "name TEXT NOT NULL, water_every INTEGER NOT NULL, last_watered TEXT)"
+    )
+    conn.execute("INSERT INTO plants (name, water_every) VALUES ('Old Plant', 7)")
+    conn.commit()
+    conn.close()
+
+    conn = sqlite3.connect(old_db_path)
+    conn.row_factory = sqlite3.Row
+    app_module.ensure_schema(conn)
+    conn.close()
+
+    conn = sqlite3.connect(old_db_path)
+    columns = [row[1] for row in conn.execute("PRAGMA table_info(plants)")]
+    for column in ("fertilize_every", "last_fertilized", "repot_every", "last_repotted"):
+        assert column in columns
+    count = conn.execute("SELECT COUNT(*) FROM plants").fetchone()[0]
+    conn.close()
+    assert count == 1
+
+
 def test_plant_with_all_three_schedules_stores_correctly(client, db):
     client.post(
         "/add",

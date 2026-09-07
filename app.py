@@ -10,7 +10,11 @@ logger = logging.getLogger("plantpal")
 
 
 def _add_column(db, table, column, definition):
-    """Add a single column to a table if it is not already present."""
+    """Add a single column to a table if it is not already present.
+
+    `table` and `column` must be trusted constants from this module, never
+    user input, since they are interpolated directly into SQL.
+    """
     columns = [row["name"] for row in db.execute(f"PRAGMA table_info({table})")]
     if column not in columns:
         db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
@@ -20,7 +24,9 @@ def ensure_schema(db):
     """Make sure the plants table has all the columns this app needs.
 
     With an old database the table may predate the fertilize/repot columns,
-    so we add any missing ones. This is safe to run every time.
+    so we add any missing ones. This is safe to run every time; it assumes
+    the `plants` table already exists (the app creates it via schema.sql
+    before calling this).
     """
     _add_column(db, "plants", "fertilize_every", "INTEGER")
     _add_column(db, "plants", "last_fertilized", "TEXT")
@@ -47,6 +53,14 @@ PLANT_COLUMNS = (
     "fertilize_every, last_fertilized, repot_every, last_repotted"
 )
 
+# One entry per care type: (display label, interval column, last-done column,
+# "never" wording). Column names must match PLANT_COLUMNS above.
+CARE_TYPES = (
+    ("Water", "water_every", "last_watered", "never watered"),
+    ("Fertilize", "fertilize_every", "last_fertilized", "never done"),
+    ("Repot", "repot_every", "last_repotted", "never done"),
+)
+
 
 def get_plant(db, plant_id):
     """Return the plant with the given id, or None if it does not exist."""
@@ -70,7 +84,7 @@ def _interval_value(form, key):
         return None
     value = int(raw)
     if value < 1:
-        raise ValueError(f"{key} must be at least 1")
+        raise ValueError(f"{key} must be a whole number of at least 1")
     return value
 
 
@@ -173,13 +187,8 @@ def create_app(test_config=None):
     def inject_helpers():
         def plant_statuses(plant):
             """Return a list of (label, status) tuples for each tracked care type."""
-            care_types = (
-                ("Water", "water_every", "last_watered", "never watered"),
-                ("Fertilize", "fertilize_every", "last_fertilized", "never done"),
-                ("Repot", "repot_every", "last_repotted", "never done"),
-            )
             rows = []
-            for label, every_col, last_col, never_word in care_types:
+            for label, every_col, last_col, never_word in CARE_TYPES:
                 status = care_type_status(plant, every_col, last_col, never_word)
                 if status is not None:
                     rows.append((label, status))
@@ -199,7 +208,7 @@ def create_app(test_config=None):
             plant = add_new_plant(get_db(), request.form)
         except (KeyError, ValueError) as exc:
             logger.warning("Rejected invalid add-plant form: %s", exc)
-            return "Please give the plant a name and how many days between watering.", 400
+            return str(exc), 400
         logger.info(
             "Added plant %r (water every %s days)", plant["name"], plant["water_every"]
         )

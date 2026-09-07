@@ -30,6 +30,19 @@
             </form>
         </section>
 
+        {% if summary %}
+        <section class="summary">
+            <h2>Needs attention</h2>
+            <ul id="due-list">
+                {% for plant, label, status in summary %}
+                <li>
+                    <span class="due-plant">{{ plant["name"] }} — {{ label }}: {{ status }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
         <section>
             <h2>Your plants</h2>
             {% if plants %}

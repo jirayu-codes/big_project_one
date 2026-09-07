@@ -152,6 +152,54 @@ def plant_status(plant):
     return care_type_status(plant, "water_every", "last_watered", "never watered")
 
 
+DUE_SOON_DAYS = 3
+
+
+def _summary_bucket(days):
+    """Classify a days-until-due value into a severity bucket key.
+
+    Returns "overdue", "due today", or "due soon", or None when the value
+    is not close enough to deserve a summary entry.
+    """
+    if days < 0:
+        return "overdue"
+    if days == 0:
+        return "due today"
+    if 1 <= days <= DUE_SOON_DAYS:
+        return "due soon"
+    return None
+
+
+# Bucket priority: overdue first, then due today, then due soon.
+_BUCKET_ORDER = {"overdue": 0, "due today": 1, "due soon": 2}
+
+
+def due_summary(plants):
+    """Return summary entries for plants that need attention.
+
+    Each entry is a tuple (plant, label, status) where status is "overdue",
+    "due today", or "due soon". Entries are sorted with overdue first, then
+    due today, then due soon; within a bucket soonest due date first, then
+    plant name. Plants with no last-done date (never done) or untracked care
+    types never appear.
+    """
+    entries = []
+    for plant in plants:
+        for label, every_col, last_col, _never_word in CARE_TYPES:
+            if not plant[every_col] or not plant[last_col]:
+                continue
+            days = days_until_due(plant, every_col, last_col)
+            if days is None:
+                continue
+            bucket = _summary_bucket(days)
+            if bucket is not None:
+                entries.append((plant, label, bucket, days))
+    entries.sort(
+        key=lambda entry: (_BUCKET_ORDER[entry[2]], entry[3], entry[0]["name"])
+    )
+    return [(plant, label, bucket) for plant, label, bucket, _days in entries]
+
+
 def create_app(test_config=None):
     app = Flask(__name__)
     app.config.from_mapping(
@@ -199,8 +247,10 @@ def create_app(test_config=None):
     @app.route("/")
     def index():
         plants = get_all_plants(get_db())
+        summary = due_summary(plants)
         logger.info("Rendered home page with %d plant(s)", len(plants))
-        return render_template("index.html", plants=plants)
+        logger.info("Summary has %d due/overdue entr(y/ies)", len(summary))
+        return render_template("index.html", plants=plants, summary=summary)
 
     @app.route("/add", methods=["POST"])
     def add_plant():

@@ -1,6 +1,21 @@
 from datetime import date, timedelta
 
-from app import care_type_status, days_until_due, plant_status
+from app import care_type_status, days_until_due, due_summary, plant_status
+
+
+def _plant(**overrides):
+    plant = {
+        "id": 1,
+        "name": "Monstera",
+        "water_every": 7,
+        "last_watered": None,
+        "fertilize_every": None,
+        "last_fertilized": None,
+        "repot_every": None,
+        "last_repotted": None,
+    }
+    plant.update(overrides)
+    return plant
 
 
 def test_home_page_loads(client):
@@ -337,3 +352,105 @@ def test_plant_with_only_watering_shows_no_fertilize_status(client):
     assert b"never watered" in response.data
     assert b"Fertilize:" not in response.data
     assert b"Repot:" not in response.data
+
+
+def test_due_summary_overdue_plant_appears():
+    plant = _plant(last_watered=(date.today() - timedelta(days=10)).isoformat())
+    entries = due_summary([plant])
+    assert len(entries) == 1
+    assert entries[0][0]["name"] == "Monstera"
+    assert entries[0][1] == "Water"
+    assert entries[0][2] == "overdue"
+
+
+def test_due_summary_due_today_plant_appears():
+    plant = _plant(last_watered=(date.today() - timedelta(days=7)).isoformat())
+    entries = due_summary([plant])
+    assert len(entries) == 1
+    assert entries[0][1] == "Water"
+    assert entries[0][2] == "due today"
+
+
+def test_due_summary_due_soon_plant_appears():
+    plant = _plant(last_watered=(date.today() - timedelta(days=4)).isoformat())
+    entries = due_summary([plant])
+    assert len(entries) == 1
+    assert entries[0][1] == "Water"
+    assert entries[0][2] == "due soon"
+
+
+def test_due_summary_never_done_plant_does_not_appear():
+    plant = _plant(last_watered=None)
+    assert due_summary([plant]) == []
+
+
+def test_due_summary_untracked_care_type_does_not_appear():
+    plant = _plant(
+        last_watered=(date.today() - timedelta(days=20)).isoformat(),
+        fertilize_every=None,
+        last_fertilized=(date.today() - timedelta(days=20)).isoformat(),
+    )
+    entries = due_summary([plant])
+    assert len(entries) == 1
+    assert entries[0][1] == "Water"
+
+
+def test_due_summary_sorts_overdue_then_due_today_then_due_soon():
+    due_soon = _plant(
+        id=1, name="Alpha",
+        last_watered=(date.today() - timedelta(days=4)).isoformat(),
+    )
+    due_today = _plant(
+        id=2, name="Beta",
+        last_watered=(date.today() - timedelta(days=7)).isoformat(),
+    )
+    overdue = _plant(
+        id=3, name="Gamma",
+        last_watered=(date.today() - timedelta(days=10)).isoformat(),
+    )
+    entries = due_summary([due_soon, due_today, overdue])
+    names = [entry[0]["name"] for entry in entries]
+    assert names == ["Gamma", "Beta", "Alpha"]
+
+
+def test_due_summary_ties_ordered_by_plant_name():
+    a = _plant(id=1, name="Bee", last_watered=(date.today() - timedelta(days=10)).isoformat())
+    b = _plant(id=2, name="Ant", last_watered=(date.today() - timedelta(days=11)).isoformat())
+    entries = due_summary([a, b])
+    names = [entry[0]["name"] for entry in entries]
+    assert names == ["Ant", "Bee"]
+
+
+def test_page_shows_summary_when_plant_overdue(app, client, db):
+    client.post("/add", data={"name": "Monstera", "water_every": "7"})
+    plant_id = db.execute(
+        "SELECT id FROM plants WHERE name = ?", ("Monstera",)
+    ).fetchone()["id"]
+    db.execute(
+        "UPDATE plants SET last_watered = ? WHERE id = ?",
+        ((date.today() - timedelta(days=10)).isoformat(), plant_id),
+    )
+    db.commit()
+
+    response = client.get("/")
+
+    assert b"Needs attention" in response.data
+    assert b"Monstera" in response.data
+    assert b"overdue" in response.data
+
+
+def test_page_shows_no_summary_when_nothing_due(app, client, db):
+    client.post("/add", data={"name": "Monstera", "water_every": "7"})
+    plant_id = db.execute(
+        "SELECT id FROM plants WHERE name = ?", ("Monstera",)
+    ).fetchone()["id"]
+    db.execute(
+        "UPDATE plants SET last_watered = ? WHERE id = ?",
+        ((date.today() - timedelta(days=2)).isoformat(), plant_id),
+    )
+    db.commit()
+
+    response = client.get("/")
+
+    assert b"Needs attention" not in response.data
+    assert b"Monstera" in response.data

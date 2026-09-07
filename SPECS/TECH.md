@@ -24,10 +24,6 @@ Table: plants
 
 These are the rules we follow when building PlantPal.
 
-### Red/Green TDD
-Write a failing test first and watch it fail (red), then write the minimal
-code to make it pass (green). Refactor when you need to.
-
 ### Spec-Driven Development
 All work starts from a written spec (requirements, plan, validation). Every
 piece of code must trace back to an approved spec before it is written.

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlantPal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main>
+        <h1>PlantPal</h1>
+        <p class="tagline">Track when your plants need water.</p>
+
+        <section>
+            <h2>Add a plant</h2>
+            <form id="add-plant-form" action="{{ url_for('add_plant') }}" method="post">
+                <label for="name">Plant name</label>
+                <input type="text" id="name" name="name" autofocus autocomplete="off" required>
+
+                <label for="water_every">Water every (days)</label>
+                <input type="number" id="water_every" name="water_every" min="1" step="1" required>
+
+                <button type="submit">Add plant</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Your plants</h2>
+            {% if plants %}
+            <ul id="plant-list">
+                {% for plant in plants %}
+                <li>
+                    <span class="plant-name">{{ plant["name"] }}</span>
+                    <span class="plant-status">{{ plant_status(plant) }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="empty">No plants yet. Add your first one above!</p>
+            {% endif %}
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

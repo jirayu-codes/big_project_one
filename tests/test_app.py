@@ -36,7 +36,7 @@ def test_plant_with_no_last_watered_shows_never_watered(client):
     assert b"never watered" in response.data
 
 
-def test_plant_status_never_watered(app):
+def test_plant_status_never_watered():
     plant = {"id": 1, "name": "Monstera", "water_every": 7, "last_watered": None}
     assert plant_status(plant) == "never watered"
 

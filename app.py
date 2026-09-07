@@ -26,7 +26,10 @@ def get_all_plants(db):
 def add_new_plant(db, form):
     """Create a plant from a submitted form and return the saved row."""
     name = form["name"].strip()
-    water_every = int(form["water_every"])
+    try:
+        water_every = int(form["water_every"])
+    except (KeyError, ValueError):
+        raise ValueError("water_every must be a whole number") from None
     if not name or water_every < 1:
         raise ValueError("name must not be empty and water_every must be at least 1")
     cursor = db.execute(
@@ -105,8 +108,8 @@ def create_app(test_config=None):
     return app
 
 
-app = create_app()
-
 if __name__ == "__main__":
+    app = create_app()
     port = int(os.environ.get("PORT", "3000"))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    debug = os.environ.get("FLASK_DEBUG", "").lower() in {"1", "true", "yes"}
+    app.run(host="0.0.0.0", port=port, debug=debug)

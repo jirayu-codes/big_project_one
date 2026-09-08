@@ -112,19 +112,21 @@ We built the thinnest working version (add plant, list, "never watered" status) 
 
 ## What I Learned
 
-Building PlantPal was a masterclass in **discipline over cleverness**. A few things that stuck:
+This was the first project I built by writing down *what I was going to do before doing it*, and honestly it was a very different experience from just opening an editor and hacking away. Some things that surprised me along the way:
 
-**Specs prevent scope creep.** Writing requirements/plan/validation before code forced me to define "done" upfront. When I wanted to add "mark as fertilized" mid-feature, the validation.md said "out of scope" — so I didn't. That feature is now a deliberate future item, not a half-baked distraction.
+**Writing the spec first made me realize I didn't know what I wanted.** I thought "a plant tracker" was obvious, but sitting down to write requirements/plan/validation forced me to answer questions like *what does "overdue" even mean*, *should never-watered plants show up in the summary*, and *which care types should count*. Defining "done" on paper prevented me from half-adding a million ideas halfway through.
 
-**Simple tools are underrated.** Vanilla HTML/CSS/JS + Flask + SQLite is *plenty* for a real app. No webpack, no ORM, no migrations library — just code I can read and understand in one sitting. The `ensure_schema()` pattern (check PRAGMA table_info, ALTER TABLE if missing) is 20 lines and handles migrations better than many frameworks.
+**Saying "no" was actually the easiest part.** Several times I caught myself wanting to add features. The validation file for each feature explicitly said what was out of scope, so I had a concrete reason to say "not this time" instead of a vague "maybe later." It felt weird to write down what I *wouldn't* build, but it made the project much more focused.
 
-**DRY is a design tool, not just a cleanup rule.** The `CARE_TYPES` constant drives the schema, the form, the status logic, the summary, and the tests. When I added "repot", I changed one tuple and everything else worked. That only happened because I resisted the urge to copy-paste water logic for fertilize.
+**Simple tools were a huge confidence boost.** We used vanilla HTML/CSS/JS, Flask, and SQLite. No React, no ORM, no build tools. When something broke, I could actually read the whole codebase in one sitting and understand it. I was a bit nervous at the start that the project would "need" a fancier stack, but it really didn't.
 
-**Tests as executable spec.** The validation.md checklist became the test names. `test_due_summary_never_done_plant_does_not_appear` isn't just a test — it's a requirement you can run. When the verifier agent checked off every validation row, it was running the same mental model.
+**The DRY thing finally clicked for me.** My first instinct with the fertilize and repot features was to copy the watering code and paste it for each. But we had a `CARE_TYPES` constant, so I added one line there instead. When I later added the summary list feature, the same constant was driving *that* too. It felt a bit magical that changing one tuple updated the form, the status logic, and the summary all at once — the result of remembering "don't repeat yourself" on the first try instead of after copy-pasting the same bug three times.
 
-**Lint rules should have reasons, not just exceptions.** The `ruff.toml` DTZ disable isn't "we don't care about timezones" — it's "we decided dates are local on purpose, documented in TECH.md, and here's the comment pointing to it." That's the difference between technical debt and a conscious tradeoff.
+**Tests and specs turned out to be two sides of the same thing.** The checklist in each validation file became the test names. When the tests say `test_due_summary_never_done_plant_does_not_appear`, that's a requirement I can run. I found that way more approachable than "red/green testing" — I never got the hang of writing tests before the code, but writing them to confirm what the spec promised made sense.
 
-**Iterative delivery beats big bang.** Four PRs, each merging a thin vertical slice, meant the app was deployable after PR #1. Every merge was a working product. That's the walking skeleton philosophy in action.
+**Lint is not a nag, it's a memory aid.** I thought ruff was just being pedantic until it flagged the timezone stuff. We disabled those rules, but only because we made a real decision about dates (stored as local dates, no timezone handling) — and we documented why. Now I get that a lint rule is either "this is a problem" or "we decided not to care, here's why." Both are useful.
+
+**Small merges, often, was better than one big unveiling.** The app was usable after the very first tiny slice: add a plant, see it listed, see "never watered." That was a real, working product even though it was tiny, and every feature after that just built on it without breaking it. Big-bang "build everything then show me" would have been way more stressful and buggy.
 
 ---
 

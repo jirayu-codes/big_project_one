@@ -7,65 +7,87 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <main>
-        <h1>PlantPal</h1>
+    <header class="site-header">
+        <a class="brand" href="{{ url_for('index') }}">
+            <span class="brand-mark" aria-hidden="true">🪴</span>
+            <span class="brand-name">PlantPal</span>
+        </a>
         <p class="tagline">Track when your plants need water.</p>
+    </header>
 
-        <section>
+    <main>
+        <section class="card">
             <h2>Add a plant</h2>
             <form id="add-plant-form" action="{{ url_for('add_plant') }}" method="post">
-                <label for="name">Plant name</label>
-                <input type="text" id="name" name="name" autofocus autocomplete="off" required>
+                <div class="field">
+                    <label for="name">Plant name</label>
+                    <input type="text" id="name" name="name" autofocus autocomplete="off" required>
+                </div>
 
-                <label for="water_every">Water every (days)</label>
-                <input type="number" id="water_every" name="water_every" min="1" step="1" required>
+                <div class="field">
+                    <label for="water_every">Water every (days)</label>
+                    <input type="number" id="water_every" name="water_every" min="1" step="1" required>
+                </div>
 
-                <label for="fertilize_every">Fertilize every (days, optional)</label>
-                <input type="number" id="fertilize_every" name="fertilize_every" min="1" step="1">
+                <div class="field">
+                    <label for="fertilize_every">Fertilize every (days)</label>
+                    <input type="number" id="fertilize_every" name="fertilize_every" min="1" step="1">
+                    <small class="field-hint">Optional</small>
+                </div>
 
-                <label for="repot_every">Repot every (days, optional)</label>
-                <input type="number" id="repot_every" name="repot_every" min="1" step="1">
+                <div class="field">
+                    <label for="repot_every">Repot every (days)</label>
+                    <input type="number" id="repot_every" name="repot_every" min="1" step="1">
+                    <small class="field-hint">Optional</small>
+                </div>
 
-                <button type="submit">Add plant</button>
+                <button class="btn btn-primary" type="submit">Add plant</button>
             </form>
         </section>
 
         {% if summary %}
-        <section class="summary">
+        <section class="card summary">
             <h2>Needs attention</h2>
-            <ul id="due-list">
+            <ul id="due-list" class="summary-list">
                 {% for plant, label, status in summary %}
-                <li>
-                    <span class="due-plant">{{ plant["name"] }} — {{ label }}: {{ status }}</span>
+                <li class="summary-item {{ status_class(status) }}">
+                    <span class="summary-text">{{ plant["name"] }} — {{ label }}: {{ status }}</span>
                 </li>
                 {% endfor %}
             </ul>
         </section>
         {% endif %}
 
-        <section>
+        <section class="card">
             <h2>Your plants</h2>
             {% if plants %}
-            <ul id="plant-list">
+            <ul id="plant-list" class="plant-list">
                 {% for plant in plants %}
-                <li>
+                <li class="plant-card">
                     <span class="plant-name">{{ plant["name"] }}</span>
                     <span class="plant-statuses">
                         {% for label, status in plant_statuses(plant) %}
-                        <span class="plant-status"><strong>{{ label }}:</strong> {{ status }}</span>
+                        <span class="pill {{ status_class(status) }}"><strong>{{ label }}:</strong> {{ status }}</span>
                         {% endfor %}
                     </span>
                     <form class="water-form" action="{{ url_for('mark_watered', plant_id=plant['id']) }}" method="post">
-                        <button type="submit">Watered</button>
+                        <button class="btn btn-ghost" type="submit">Watered</button>
                     </form>
                 </li>
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="empty">No plants yet. Add your first one above!</p>
+            <div class="empty-state">
+                <p class="empty-title">No plants yet</p>
+                <p>Add your first one above and PlantPal will remind you when it needs care.</p>
+            </div>
             {% endif %}
         </section>
     </main>
+
+    <footer class="site-footer">
+        Made with Flask, SQLite, and a lot of watering.
+    </footer>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>

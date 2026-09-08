@@ -1,110 +1,356 @@
+/* PlantPal — design tokens */
 :root {
-    font-family: system-ui, sans-serif;
-    line-height: 1.5;
-    color: #2d2a26;
-    background: #f4f6f1;
-    max-width: 40rem;
-    margin: 0 auto;
-    padding: 2rem 1rem;
+    /* Palette */
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --ink: #2b2a26;
+    --muted: #726d64;
+    --border: #e4dfd5;
+    --primary: #25614a;
+    --primary-hover: #1d4d3a;
+    --primary-soft: #e4eee8;
+    --leaf: #7cae8c;
+
+    /* Status colors */
+    --overdue-bg: #fdecea;
+    --overdue-fg: #b3261e;
+    --today-bg: #fff4e5;
+    --today-fg: #b45309;
+    --soon-bg: #fdf6e3;
+    --soon-fg: #a16207;
+    --ok-bg: #e4eee8;
+    --ok-fg: #25614a;
+    --never-bg: #f3f4f6;
+    --never-fg: #6b7280;
+
+    /* Shapes */
+    --radius-card: 12px;
+    --radius-pill: 999px;
+    --shadow-card: 0 1px 3px rgba(43, 42, 38, 0.08);
+    --shadow-card-hover: 0 6px 16px rgba(43, 42, 38, 0.12);
+    --ring: 0 0 0 3px rgba(37, 97, 74, 0.25);
+
+    /* Type */
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-h1 {
-    color: #3a6b4f;
-    margin-bottom: 0;
+* {
+    box-sizing: border-box;
+}
+
+html {
+    font-family: var(--font);
+    color: var(--ink);
+    background: var(--bg);
+}
+
+body {
+    margin: 0 auto;
+    max-width: 52rem;
+    padding: 2rem 1rem;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Header */
+.site-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.brand-mark {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.brand-name {
+    letter-spacing: -0.02em;
 }
 
 .tagline {
-    color: #7a756f;
-    margin-top: 0.25rem;
+    margin: 0;
+    color: var(--muted);
 }
 
-section {
-    margin-bottom: 2rem;
+/* Sections */
+section h2 {
+    margin: 0 0 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ink);
 }
 
-h2 {
-    color: #4a4642;
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    padding: 1.25rem;
 }
 
-form {
+/* Form */
+#add-plant-form {
     display: grid;
-    gap: 0.5rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
 }
 
 label {
-    color: #5a564f;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--muted);
 }
 
-input,
-button {
-    padding: 0.5rem;
+.field-hint {
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+input {
+    padding: 0.6rem 0.7rem;
     font: inherit;
-    border: 1px solid #b9c4af;
-    border-radius: 6px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
 }
 
-button {
-    background: #3a6b4f;
-    color: white;
-    border: none;
+input:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+    border-color: var(--primary);
+}
+
+/* Buttons */
+.btn {
+    font: inherit;
+    font-weight: 600;
+    border-radius: 8px;
     cursor: pointer;
-    margin-top: 0.5rem;
+    padding: 0.6rem 1rem;
+    transition: background-color 0.15s ease, transform 0.05s ease;
 }
 
-button:hover {
-    background: #2f573f;
+.btn:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
 }
 
-#plant-list {
+.btn-primary {
+    grid-column: 1 / -1;
+    background: var(--primary);
+    color: #fff;
+    border: 1px solid var(--primary);
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+.btn-primary:disabled {
+    background: var(--muted);
+    border-color: var(--muted);
+    cursor: wait;
+}
+
+.btn-ghost {
+    background: var(--primary-soft);
+    color: var(--primary);
+    border: 1px solid transparent;
+    padding: 0.4rem 0.9rem;
+}
+
+.btn-ghost:hover:not(:disabled) {
+    background: #d5e5db;
+}
+
+.btn-ghost:disabled {
+    color: var(--muted);
+    cursor: wait;
+}
+
+/* Summary */
+.summary-list {
     list-style: none;
-    padding: 0;
     margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
 }
 
-#plant-list li {
+.summary-item {
+    padding: 0.7rem 1rem;
+    border-radius: 10px;
+    border-left: 4px solid transparent;
+    font-size: 0.95rem;
+}
+
+.summary-item.is-overdue {
+    background: var(--overdue-bg);
+    border-left-color: var(--overdue-fg);
+    color: var(--overdue-fg);
+}
+
+.summary-item.is-today {
+    background: var(--today-bg);
+    border-left-color: var(--today-fg);
+    color: var(--today-fg);
+}
+
+.summary-item.is-soon {
+    background: var(--soon-bg);
+    border-left-color: var(--soon-fg);
+    color: var(--soon-fg);
+}
+
+/* Plant list */
+.plant-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.plant-card {
+    display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    margin-bottom: 0.5rem;
-    background: white;
-    border-radius: 6px;
-    border-left: 4px solid #a3c585;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    border-left: 4px solid var(--leaf);
     flex-wrap: wrap;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.plant-card:hover {
+    box-shadow: var(--shadow-card-hover);
 }
 
 .plant-name {
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 1.05rem;
 }
 
 .plant-statuses {
     display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
+    flex-wrap: wrap;
+    gap: 0.4rem;
     margin-left: auto;
+    align-items: center;
 }
 
-.plant-status {
-    color: #7a756f;
-    font-size: 0.9rem;
+/* Status pills */
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.2rem 0.7rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.83rem;
+    font-weight: 500;
+    background: var(--never-bg);
+    color: var(--never-fg);
 }
 
-.plant-status strong {
-    color: #5a564f;
+.pill strong {
+    font-weight: 700;
 }
 
-.water-form {
-    display: inline;
-    margin: 0;
+.pill.is-overdue {
+    background: var(--overdue-bg);
+    color: var(--overdue-fg);
 }
 
-.water-form button {
-    margin: 0;
-    padding: 0.35rem 0.75rem;
+.pill.is-today {
+    background: var(--today-bg);
+    color: var(--today-fg);
 }
 
-.empty {
-    color: #7a756f;
-    font-style: italic;
+.pill.is-soon {
+    background: var(--soon-bg);
+    color: var(--soon-fg);
+}
+
+.pill.is-ok {
+    background: var(--ok-bg);
+    color: var(--ok-fg);
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    color: var(--muted);
+}
+
+.empty-state p {
+    margin: 0.25rem 0;
+}
+
+.empty-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+/* Footer */
+.site-footer {
+    margin-top: auto;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+/* Small screens */
+@media (max-width: 40rem) {
+    #add-plant-form {
+        grid-template-columns: 1fr;
+    }
+
+    .plant-statuses {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .pill {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn,
+    .plant-card {
+        transition: none;
+    }
 }

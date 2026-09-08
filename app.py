@@ -242,7 +242,23 @@ def create_app(test_config=None):
                     rows.append((label, status))
             return rows
 
-        return {"plant_statuses": plant_statuses}
+        def status_class(status):
+            """Map a status word to a CSS class used to color its badge."""
+            if status == "overdue":
+                return "is-overdue"
+            if status == "due today":
+                return "is-today"
+            if status == "due soon":
+                return "is-soon"
+            if status.startswith("due in "):
+                try:
+                    days = int(status.split()[2])
+                except (IndexError, ValueError):
+                    return "is-soon"
+                return "is-soon" if days <= DUE_SOON_DAYS else "is-ok"
+            return "is-never"
+
+        return {"plant_statuses": plant_statuses, "status_class": status_class}
 
     @app.route("/")
     def index():
